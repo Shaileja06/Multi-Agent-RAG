@@ -1,0 +1,140 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Multi-Agent RAG Database Query</title>
+    <style>
+        body { font-family: sans-serif; margin: 20px; background-color: #f4f4f4; color: #333; }
+        .container { max-width: 800px; margin: auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        h1 { color: #333; text-align: center; }
+        textarea { width: 95%; padding: 10px; margin-bottom: 10px; border: 1px solid #ddd; border-radius: 4px; min-height: 60px; }
+        button { background-color: #007bff; color: white; padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-size: 16px; }
+        button:hover { background-color: #0056b3; }
+        .result-box { margin-top: 20px; padding: 15px; border: 1px solid #eee; border-radius: 4px; background-color: #f9f9f9; }
+        .result-box h3 { margin-top: 0; color: #007bff; }
+        pre { background-color: #eee; padding: 10px; border-radius: 4px; white-space: pre-wrap; word-wrap: break-word; font-size: 0.9em; }
+        .error { color: red; font-weight: bold; }
+        .loader {
+            border: 5px solid #f3f3f3; /* Light grey */
+            border-top: 5px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+            display: none; /* Hidden by default */
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Ask Your Database (Multi-Agent RAG)</h1>
+        <textarea id="question" placeholder="E.g., How many employees are in the Sales department?"></textarea>
+        <button onclick="askQuestion()">Ask</button>
+        <div class="loader" id="loader"></div>
+
+        <div id="result" class="result-box" style="display:none;">
+            <h3>Natural Language Answer:</h3>
+            <p id="naturalAnswer"></p>
+            
+            <h3>Intermediate Steps:</h3>
+            <h4>Relevant Schema (Truncated for display):</h4>
+            <pre id="relevantSchema"></pre>
+            
+            <h4>Generated SQL Query:</h4>
+            <pre id="generatedSql"></pre>
+            
+            <h4>Result Rows (Max 10 shown):</h4>
+            <pre id="resultRows"></pre>
+
+            <div id="errorMessage" class="error" style="display:none;">
+                <h4>Error:</h4>
+                <p id="errorText"></p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function askQuestion() {
+            const question = document.getElementById('question').value;
+            if (!question.trim()) {
+                alert("Please enter a question.");
+                return;
+            }
+
+            document.getElementById('loader').style.display = 'block';
+            document.getElementById('result').style.display = 'none';
+            document.getElementById('errorMessage').style.display = 'none';
+
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question: question }),
+                });
+
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('result').style.display = 'block';
+
+                const data = await response.json();
+
+                document.getElementById('naturalAnswer').textContent = data.natural_language_answer || "N/A";
+                
+                // Display schema (truncate if very long for UI purposes)
+                let schemaText = data.intermediate_steps?.relevant_schema || "N/A";
+                if (schemaText.length > 1000) {
+                    schemaText = schemaText.substring(0, 1000) + "\n... (schema truncated for display)";
+                }
+                document.getElementById('relevantSchema').textContent = schemaText;
+
+                document.getElementById('generatedSql').textContent = data.intermediate_steps?.generated_sql_query || "N/A";
+                
+                let resultRowsText = "N/A";
+                if (data.intermediate_steps?.result_rows) {
+                    if (Array.isArray(data.intermediate_steps.result_rows) && data.intermediate_steps.result_rows.length > 0) {
+                        resultRowsText = JSON.stringify(data.intermediate_steps.result_rows.slice(0,10), null, 2);
+                        if(data.intermediate_steps.result_rows.length > 10) {
+                            resultRowsText += `\n... (and ${data.intermediate_steps.result_rows.length - 10} more rows)`;
+                        }
+                    } else if (Array.isArray(data.intermediate_steps.result_rows) && data.intermediate_steps.result_rows.length === 0 && !data.error_message && !data.intermediate_steps?.execution_error) {
+                         resultRowsText = "No matching records found.";
+                    } else if (data.intermediate_steps?.execution_error){
+                        resultRowsText = `Execution Error: ${data.intermediate_steps.execution_error}`;
+                    }
+                } else if (data.intermediate_steps?.execution_message) { // Handle specific "no records" message
+                    resultRowsText = data.intermediate_steps.execution_message;
+                }
+
+
+                document.getElementById('resultRows').textContent = resultRowsText;
+
+                if (data.error_message) {
+                    document.getElementById('errorMessage').style.display = 'block';
+                    document.getElementById('errorText').textContent = data.error_message;
+                } else {
+                    document.getElementById('errorMessage').style.display = 'none';
+                }
+
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('loader').style.display = 'none';
+                document.getElementById('result').style.display = 'block'; // Show result box to display error
+                document.getElementById('errorMessage').style.display = 'block';
+                document.getElementById('errorText').textContent = "An unexpected error occurred while communicating with the server: " + error.message;
+                document.getElementById('naturalAnswer').textContent = "Error processing request.";
+                document.getElementById('relevantSchema').textContent = "N/A";
+                document.getElementById('generatedSql').textContent = "N/A";
+                document.getElementById('resultRows').textContent = "N/A";
+            }
+        }
+    </script>
+</body>
+</html>
