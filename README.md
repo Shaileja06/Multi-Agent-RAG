@@ -22,7 +22,7 @@ Built using **Flask**, **SQLite**, and **Gemini Pro** via the `langchain-google-
 
 ## 🏗️ System Architecture
 
-```mermaid
+```
 graph TD
 A[User Question] --> B[Schema Agent<br/>Reads schema DDL]
 B --> C[SQL Generator Agent<br/>LLM-based prompt generation]
