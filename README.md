@@ -112,11 +112,12 @@ Visit: [http://localhost:5001](http://localhost:5001)
 ├── app.py                   # Main Flask application
 ├── .env                     # Contains Google API Key
 ├── requirements.txt         # Python dependencies
-├── README.md      
+├── README.md                # Project documentation
 ├── templates/
 │   └── index.html           # Web UI
 └── data/
-    └── office_rag.db        # SQLite database
+    ├── office_rag.db        # SQLite database
+    └── sqlite.py            # Script to generate mock data for DB
 ```
 
 ---
