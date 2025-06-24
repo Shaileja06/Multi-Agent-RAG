@@ -60,16 +60,6 @@ pip install -r requirements.txt
 GOOGLE_API_KEY=your_google_gemini_api_key
 ```
 
-### 4. Create the SQLite Database
-
-Before running the app, ensure the SQLite DB is created using mock data.
-
-```bash
-python sqlite_mock_data.py
-```
-
----
-
 ## ▶️ Running the Application
 
 ```bash
